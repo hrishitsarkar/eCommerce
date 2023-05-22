@@ -1,5 +1,7 @@
 const config = {
-    secret_jwt : "trafalgarlaw"
+    secret_jwt : "trafalgarlaw",
+    emailUser : 'hrishittherock@gmail.com',
+    emailPassword : 'bujeubmiwbgrsiwy'
 }
 
 

@@ -2,6 +2,43 @@ const User = require('../models/userModel');
 const bcryptjs = require('bcryptjs');
 const config = require('../config/config');
 const jwt = require('jsonwebtoken');
+
+const nodemailer = require('nodemailer');
+const randomstring = require('randomstring');
+
+const sendResetPasswordMail = async (name,email,token) => {
+try {
+    const transporter = nodemailer.createTransport({
+        host : 'smtp.gmail.com',
+        port : 587,
+        secure : false,
+        requireTLS : true,
+        auth : {
+            user : config.emailUser,
+            pass : config.emailPassword
+        }
+    });
+
+    const mailOptions = {
+        from : config.emailUser,
+        to : email,
+        subject: 'For reset password',
+        html : '<p>Hi '+name+' please reset your password by clicking <a href="http://localhost:3000/api/reset-password?token='+token+'">here</a></p>'
+    }
+
+    transporter.sendMail(mailOptions,function(error,info){
+        if(error){
+            console.log(error);
+        }else{
+            console.log('mail has been sent : -',info.response);
+        }
+    })
+} catch (error) {
+    // res.status(400).send({success : false,msg : error.message })
+    console.log(error)
+}
+}
+
 const securePassword = async (password) => {
     try {
         const passwordHash = await bcryptjs.hash(password, 10);
@@ -120,8 +157,46 @@ const update_password = async(req,res) => {
         res.status(400).send(error.message);
     }
 }
+
+const forget_password = async (req,res) => {
+try {
+    const email = req.body.email;
+    const userData  = await User.findOne({email : email});
+    if(userData){
+        const randomString = randomstring.generate();
+
+        const data = await User.updateOne({email : email},{$set : {token : randomString}});
+        sendResetPasswordMail(userData.name,userData.email,randomString);
+        res.status(200).send({success : true , msg : "please check your email and reset your password"});
+    }else{
+        res.status(200).send({success : true , msg : "this email does not exist"});
+    }
+    
+} catch (error) {
+    res.status(400).send({success : false , msg : error.message});
+}
+}
+const reset_password = async (req,res) => {
+try {
+    const token = req.query.token;
+    const tokenData = await User.findOne({token : token});
+    if(tokenData){
+        const password = req.body.password;
+        const newPassword = await securePassword(password);
+
+        const userData = await User.findByIdAndUpdate({_id : tokenData._id},{$set : {password : newPassword,token : ''}},{new : true});
+        res.status(200).send({success : true , msg : 'User password has been reset',data : userData});
+    }else{
+        res.status(200).send({success : true , msg : 'this link has been expired'});
+    }
+} catch (error) {
+    res.status(400).send({success : false , msg : error.message})
+}
+}
 module.exports = {
     register_user,
     user_login,
     update_password,
+    forget_password,
+    reset_password
 }
