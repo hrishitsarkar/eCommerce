@@ -45,5 +45,6 @@ user_route.get('/test',auth,function(req,res){
 user_route.post('/update-password',auth,userController.update_password);
 user_route.post('/forget-password',userController.forget_password);
 user_route.get('/reset-password',userController.reset_password);
+user_route.post('/refresh-token',auth,userController.refreshToken);
 module.exports = user_route;
 

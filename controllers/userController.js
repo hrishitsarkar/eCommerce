@@ -2,7 +2,7 @@ const User = require('../models/userModel');
 const bcryptjs = require('bcryptjs');
 const config = require('../config/config');
 const jwt = require('jsonwebtoken');
-
+const fs = require('fs');
 const nodemailer = require('nodemailer');
 const randomstring = require('randomstring');
 
@@ -193,10 +193,48 @@ try {
     res.status(400).send({success : false , msg : error.message})
 }
 }
+const renewToken = async(id)=>{
+    try {
+        const secret_jwt = config.secret_jwt;
+        const newSecret = randomstring.generate();
+        fs.readFile('config/config.js',"utf-8",function(err,data){
+            if(err) throw err;
+            const newValue = data.replace(new RegExp(secret_jwt,'g'),newSecret);
+            fs.writeFile('config/config.js',newValue,'utf-8',function(err,data){
+                if(err) throw err;
+                console.log('done');
+            })
+        })
+        const token = await jwt.sign({ _id : id},newSecret);
+        return token
+    } catch (error) {
+        res.status(400).send({success : false , msg : error.message})
+
+    }
+}
+const refreshToken = async(req,res)=>{
+    try {
+        const user_id = req.body.id;
+        const userData = User.findById({_id : user_id});
+        if(userData){
+            const tokenData = await renewToken(user_id);
+            const response = {
+                user_id : user_id,
+                token : tokenData
+            }
+            res.status(200).send({success : true,msg : "refresh token details",data : response})
+        }else{
+        res.status(200).send({success : false , msg : "User not found"})
+        }
+    } catch (error) {
+        res.status(400).send({success : false , msg : error.message})
+    }
+}
 module.exports = {
     register_user,
     user_login,
     update_password,
     forget_password,
-    reset_password
+    reset_password,
+    refreshToken
 }
